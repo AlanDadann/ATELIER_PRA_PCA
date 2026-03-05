@@ -287,6 +287,9 @@ Automatisation du Failover : Utiliser des outils comme Velero pour la sauvegarde
 Monitoring : Mettre en place Prometheus/Grafana pour surveiller l'état des sauvegardes et la santé des volumes. 
   
 
+![Schéma résilient](./schéma.png)  
+  
+
 
 ---------------------------------------------------
 Séquence 6 : Ateliers  
