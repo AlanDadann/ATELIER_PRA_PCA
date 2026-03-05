@@ -336,7 +336,65 @@ kubectl -n pra patch deployment flask --patch '{
 ### **Atelier 2 : Choisir notre point de restauration**  
 Aujourd’hui nous restaurobs “le dernier backup”. Nous souhaitons **ajouter la capacité de choisir un point de restauration**.
 
-*..Décrir ici votre procédure de restauration (votre runbook)..*  
+Par défaut, le script de restauration (`sqlite-restore`) est conçu pour être efficace mais "aveugle" : il récupère systématiquement le fichier le plus récent via une commande de tri temporel. Pour un **PRA (Plan de Reprise d'Activité)** vraiment robuste, nous devons être capables de restaurer une version antérieure spécifique (par exemple, si la dernière sauvegarde contient déjà des données corrompues ou un bug applicatif).
+
+### 📖 Procédure de restauration granulaire (Runbook)
+
+Cette procédure permet de reprendre l'activité sur un point de sauvegarde choisi manuellement.
+
+**1. Identification du point de restauration (RPO)**
+Listez les sauvegardes disponibles dans le volume de backup pour identifier le timestamp du fichier souhaité (ex: `app-1772696221.db`) :
+
+```bash
+kubectl -n pra exec -it $(kubectl -n pra get pod -l app=flask -o name) -- ls -lh /backup
+
+```
+
+**2. Préparation du Job de restauration**
+Modifiez le fichier de configuration du Job `pra/50-job-restore.yaml`. Vous devez remplacer la logique de détection automatique par une copie directe du fichier cible.
+
+*Extrait du YAML à modifier :*
+
+```yaml
+# ... dans la section spec/containers/args
+          args:
+            - |
+              # On remplace la détection automatique par le fichier choisi
+              cp /backup/app-1772696221.db /data/app.db
+
+```
+
+**3. Exécution du sinistre contrôlé et restauration**
+Pour garantir l'intégrité de la base SQLite lors du remplacement, suivez cet enchaînement strict :
+
+* **Arrêt de la production :** On réduit le nombre de pods à 0 pour fermer tous les accès au fichier `app.db`.
+```bash
+kubectl -n pra scale deployment flask --replicas=0
+
+```
+
+
+* **Nettoyage et Application :** On supprime l'ancien job de restauration (s'il existe déjà) et on lance le nouveau.
+```bash
+kubectl -n pra delete job sqlite-restore --ignore-not-found
+kubectl apply -f pra/50-job-restore.yaml
+
+```
+
+
+
+**4. Vérification et Remise en service**
+Une fois que le Job affiche le statut `Completed` :
+
+* **Relance de l'application :**
+```bash
+kubectl -n pra scale deployment flask --replicas=1
+
+```
+
+
+* **Validation :** Accédez à votre route `/status`. Le `count` doit désormais refléter l'état exact de la base de données à l'heure du snapshot choisi.
+
   
 ---------------------------------------------------
 Evaluation
