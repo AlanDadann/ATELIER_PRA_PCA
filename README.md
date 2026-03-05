@@ -302,6 +302,8 @@ Difficulté : Moyenne (~2 heures)
 * backup_age_seconds : âge du dernier backup
 
 
+Note sur le compteur (count) : Le champ count affiche exclusivement le nombre d'enregistrements présents dans la base de données de production active (/data/app.db). Les fichiers créés chaque minute dans le dossier /backup sont des copies de sécurité (clichés) de ce fichier principal ; ils n'ajoutent pas de nouvelles données et n'augmentent donc pas le compteur, qui ne progresse que lors d'un ajout manuel via la route /add.
+
 ```
 kubectl -n pra patch cronjob sqlite-backup -p '{"spec":{"suspend":false}}'
 ```
