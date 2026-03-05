@@ -230,28 +230,63 @@ Faites preuve de pédagogie et soyez clair dans vos explications et procedures d
 
 **Exercice 1 :**  
 Quels sont les composants dont la perte entraîne une perte de données ?  
-  
-*..Répondez à cet exercice ici..*
+
+ 
+Les composants concernés sont les suivants:
+
+=> Le PVC pra-backup : En effet, c'est ici que sont stockées toutes les sauvegardes historiques. Si ce volume est supprimé en même temps que le volume de production (pra-data), il n'y a plus de source de restauration.
+
+=> Le Node (nœud) physique/virtuel unique : Comme nous utilisons K3d dans un Codespace, les deux PVC (pra-data et pra-backup) résident probablement physiquement sur le même disque dur. Si le serveur hôte subit une panne matérielle totale, les données de production ET les sauvegardes sont perdues.
+
+=> Les données non encore sauvegardées : Comme le CronJob s'exécute toutes les minutes, toutes les données saisies entre deux sauvegardes (par exemple, un message ajouté à la 30ème seconde avant un crash) sont perdues.
+ 
 
 **Exercice 2 :**  
 Expliquez nous pourquoi nous n'avons pas perdu les données lors de la supression du PVC pra-data  
-  
-*..Répondez à cet exercice ici..*
+
+C'est grâce à la redondance asynchrone mise en place.
+
+ => Les données ne sont pas stockées dans le Pod éphémère mais dans le volume persistant pra-data.
+ => Le Cronjob fait une copie du fichier SQLite du volume pra-data vers le volume de secours  mra-backup chaques minutes.
+ => Lors du scénario deux, quand pra-data a été supprimé, le volume backup est resté intègre et disponible. Le job de restauration 50-job-restore.yaml a permis de recopier la version la dernière version qui a été backup vers le nouveau volume.
 
 **Exercice 3 :**  
 Quels sont les RTO et RPO de cette solution ?  
-  
-*..Répondez à cet exercice ici..*
+
+=> RPO (Recovery Point Objective - Perte de données maximale admissible) : * Valeur : 1 minute. * Justification : Le CronJob de sauvegarde s'exécute toutes les minutes. Dans le pire des cas, si le sinistre survient juste avant la sauvegarde suivante, nous perdons au maximum 60 secondes de données.
+
+=> RTO (Recovery Time Objective) : 4 à 8 minutes Il s'agit du temps nécessaire pour remettre l'application en service après une panne. Ce délai est ici lié à beaucoup de facteurs: il faut d'abord détecter l'incident, isoler l'environnement en supprimant les ressources corrompues, puis relancer le déploiement et le script de restauration. 
+Selon la réactivité, l'application redeviendra fonctionnelle en moins de 10 minutes
 
 **Exercice 4 :**  
 Pourquoi cette solution (cet atelier) ne peux pas être utilisé dans un vrai environnement de production ? Que manque-t-il ?   
-  
-*..Répondez à cet exercice ici..*
+
+=> Stockage Local (SPOF) : Le stockage est local au cluster. Si le cluster K3d tombe, on perd tout. En production, on utilise du stockage distribué ou des services managés (EBS, Azure Disk).
+
+=> Sauvegardes sur le même site : La sauvegarde est sur le même cluster que la production. Un vrai PRA exige que les sauvegardes soient exportées hors site (par exemple sur un bucket S3 ou dans une autre région géographique).
+
+=> Base de données SQLite : SQLite est un fichier plat. Pour de la haute disponibilité (PCA), on privilégiera des bases de données orientées réseau (PostgreSQL, MariaDB) capables de faire de la réplication en temps réel.
+
+=> Restauration Manuelle : Le processus de restauration nécessite une intervention humaine, ce qui augmente le RTO et le risque d'erreur.
+
+=> Absence de Monitoring/Alerting : Rien ne nous prévient si le CronJob de sauvegarde échoue.
+
+
   
 **Exercice 5 :**  
-Proposez une archtecture plus robuste.   
+Pour une architecture de niveau professionnel, voici les améliorations à apporter :
+
+Base de données managée : Utiliser un service comme AWS RDS ou Google Cloud SQL avec une option Multi-AZ (Multi-Zone de disponibilité) pour une réplication synchrone (PCA immédiat).
+
+Sauvegardes Externalisées : Configurer les sauvegardes pour qu'elles soient envoyées vers un Object Storage (type AWS S3) avec une politique de versioning et d'immutabilité.
+
+Cluster Multi-Nœuds / Multi-Régions : Déployer Kubernetes sur plusieurs zones géographiques pour que l'application reste disponible même si un centre de données entier brûle.
+
+Automatisation du Failover : Utiliser des outils comme Velero pour la sauvegarde/restauration Kubernetes ou un orchestrateur capable de basculer automatiquement le trafic vers une région secondaire (Global Load Balancer).
+
+Monitoring : Mettre en place Prometheus/Grafana pour surveiller l'état des sauvegardes et la santé des volumes. 
   
-*..Répondez à cet exercice ici..*
+
 
 ---------------------------------------------------
 Séquence 6 : Ateliers  
