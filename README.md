@@ -301,6 +301,33 @@ Difficulté : Moyenne (~2 heures)
 * last_backup_file : nom du dernier backup présent dans /backup
 * backup_age_seconds : âge du dernier backup
 
+
+```
+kubectl -n pra patch cronjob sqlite-backup -p '{"spec":{"suspend":false}}'
+```
+Patch pour que le Pod puisse voir le dossier qui permet le count
+
+```
+kubectl -n pra patch deployment flask --patch '{
+  "spec": {
+    "template": {
+      "spec": {
+        "containers": [{
+          "name": "flask",
+          "volumeMounts": [
+            {"mountPath": "/data", "name": "data"},
+            {"mountPath": "/backup", "name": "backup"}
+          ]
+        }],
+        "volumes": [
+          {"name": "data", "persistentVolumeClaim": {"claimName": "pra-data"}},
+          {"name": "backup", "persistentVolumeClaim": {"claimName": "pra-backup"}}
+        ]
+      }
+    }
+  }
+}'
+```
 ![capture d'écran](Capturdécran.png)  
 
 ---------------------------------------------------
