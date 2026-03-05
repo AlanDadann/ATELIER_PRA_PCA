@@ -396,13 +396,3 @@ kubectl -n pra scale deployment flask --replicas=1
 * **Validation :** Accédez à votre route `/status`. Le `count` doit désormais refléter l'état exact de la base de données à l'heure du snapshot choisi.
 
   
----------------------------------------------------
-Evaluation
----------------------------------------------------
-Cet atelier PRA PCA, **noté sur 20 points**, est évalué sur la base du barème suivant :  
-- Série d'exerices (5 points)
-- Atelier N°1 - Ajout d'un fonctionnalité (4 points)
-- Atelier N°2 - Choisir son point de restauration (4 points)
-- Qualité du Readme (lisibilité, erreur, ...) (3 points)
-- Processus travail (quantité de commits, cohérence globale, interventions externes, ...) (4 points) 
-
